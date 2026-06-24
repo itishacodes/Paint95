@@ -1,0 +1,2015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paint95 - Retro Drawing Studio</title>
+<style>
+/* ===== RESET ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'MS Sans Serif', Arial, sans-serif;
+  font-size: 11px;
+  background: #008080;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,0,0,0.035) 1px, rgba(0,0,0,0.035) 2px),
+    repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(0,0,0,0.035) 1px, rgba(0,0,0,0.035) 2px);
+  user-select: none;
+  cursor: default;
+}
+
+/* ===== WIN95 BUTTONS ===== */
+.btn95 {
+  background: #c0c0c0;
+  border: none;
+  padding: 3px 8px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: default;
+  box-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  white-space: nowrap;
+  color: #000;
+  line-height: 1.4;
+}
+/* Only depress on actual mousedown, not on .active state to avoid permanent shift */
+.btn95:active:not(:disabled) {
+  box-shadow: inset 1px 1px #000, inset -1px -1px #fff, inset 2px 2px #808080, inset -2px -2px #dfdfdf;
+}
+.btn95.tool-active {
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #dfdfdf, inset 2px 2px #000;
+  background: #b8b8b8;
+}
+.btn95:disabled { color: #808080; text-shadow: 1px 1px #fff; pointer-events: none; }
+
+/* ===== DESKTOP ===== */
+#desktop { position: fixed; inset: 0 0 28px 0; overflow: hidden; }
+
+.desktop-icon {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 72px;
+  padding: 4px;
+  cursor: default;
+  border: 1px solid transparent;
+  gap: 3px;
+}
+.desktop-icon:hover { border-color: #000080; background: rgba(0,0,128,0.2); }
+.desktop-icon.selected { border: 1px dotted #fff; background: rgba(0,0,128,0.4); }
+.desktop-icon .icon-img { width: 32px; height: 32px; image-rendering: pixelated; }
+.desktop-icon span {
+  color: #fff;
+  font-size: 11px;
+  text-align: center;
+  text-shadow: 1px 1px #000;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+/* ===== TASKBAR ===== */
+#taskbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 28px;
+  background: #c0c0c0;
+  box-shadow: inset 0 1px #fff;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px;
+  z-index: 9999;
+}
+#start-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-weight: bold;
+  font-size: 11px;
+  min-width: 54px;
+  height: 22px;
+}
+.start-logo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  width: 14px; height: 14px;
+  flex-shrink: 0;
+}
+.start-logo div { border-radius: 1px; }
+.sq-red { background: #f00; }
+.sq-green { background: #0a0; }
+.sq-blue { background: #00f; }
+.sq-yellow { background: #ff0; }
+
+#taskbar-divider {
+  width: 2px; height: 22px;
+  box-shadow: inset -1px 0 #808080, inset 1px 0 #fff;
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+#taskbar-items { display: flex; gap: 2px; flex: 1; min-width: 0; overflow: hidden; }
+.taskbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  height: 22px;
+  min-width: 80px;
+  max-width: 160px;
+  overflow: hidden;
+  white-space: nowrap;
+  background: #c0c0c0;
+  border: none;
+  font-family: inherit;
+  cursor: default;
+  box-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+}
+.taskbar-btn.tb-active {
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #dfdfdf, inset 2px 2px #000;
+  background: #b0b0b0;
+}
+#taskbar-clock {
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 11px;
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #fff;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ===== START MENU ===== */
+#start-menu {
+  position: fixed;
+  bottom: 28px; left: 0;
+  width: 200px;
+  background: #c0c0c0;
+  box-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  display: none;
+  z-index: 10000;
+}
+#start-menu.visible { display: flex; }
+.start-sidebar {
+  width: 26px;
+  background: linear-gradient(to top, #000080, #1084d0);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 6px;
+  flex-shrink: 0;
+}
+.start-sidebar span {
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+.start-items { flex: 1; padding: 2px 0; }
+.start-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  cursor: default;
+  font-size: 11px;
+}
+.start-item:hover { background: #000080; color: #fff; }
+.start-sep { height: 1px; background: #808080; margin: 2px 4px; box-shadow: 0 1px #fff; }
+
+/* ===== WINDOWS ===== */
+.window {
+  position: absolute;
+  background: #c0c0c0;
+  box-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  display: none;
+  min-width: 200px;
+  min-height: 80px;
+}
+.window.visible { display: flex; flex-direction: column; }
+.window.minimized { display: none !important; }
+
+.title-bar {
+  display: flex;
+  align-items: center;
+  padding: 2px 3px;
+  height: 20px;
+  background: linear-gradient(to right, #000080, #1084d0);
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  gap: 4px;
+  cursor: default;
+  flex-shrink: 0;
+  user-select: none;
+}
+.title-bar.inactive { background: linear-gradient(to right, #7a7a7a, #a8a8a8); }
+.title-bar-icon { width: 14px; height: 14px; image-rendering: pixelated; flex-shrink: 0; }
+.title-bar-text { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.title-controls { display: flex; gap: 2px; flex-shrink: 0; }
+.tc-btn {
+  width: 16px; height: 14px;
+  background: #c0c0c0;
+  border: none;
+  font-size: 9px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: default;
+  box-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  color: #000;
+  flex-shrink: 0;
+}
+.tc-btn:active { box-shadow: inset 1px 1px #000, inset -1px -1px #fff; }
+
+.menu-bar {
+  display: flex;
+  padding: 1px 0;
+  background: #c0c0c0;
+  border-bottom: 1px solid #808080;
+  flex-shrink: 0;
+}
+.menu-bar span {
+  padding: 2px 6px;
+  cursor: default;
+  font-size: 11px;
+}
+.menu-bar span:hover { background: #000080; color: #fff; }
+
+/* ===== PAINT WINDOW ===== */
+.paint-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 3px 4px;
+  gap: 2px;
+  background: #c0c0c0;
+  border-bottom: 1px solid #808080;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.tsep {
+  width: 2px; height: 22px;
+  box-shadow: inset -1px 0 #808080, inset 1px 0 #fff;
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.paint-options {
+  display: flex;
+  align-items: center;
+  padding: 3px 6px;
+  gap: 6px;
+  background: #c0c0c0;
+  border-bottom: 1px solid #808080;
+  font-size: 11px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.num-input {
+  width: 38px;
+  background: #fff;
+  border: none;
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #dfdfdf;
+  padding: 1px 3px;
+  font-size: 11px;
+  font-family: inherit;
+}
+.color-chip {
+  width: 22px; height: 18px;
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #dfdfdf;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: none;
+}
+.color-chip:hover { box-shadow: inset -1px -1px #808080, inset 1px 1px #dfdfdf; }
+.sheet-input {
+  background: #fff;
+  border: none;
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #dfdfdf;
+  padding: 1px 4px;
+  font-size: 11px;
+  font-family: inherit;
+  width: 130px;
+}
+
+.paint-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* sidebar */
+.paint-sidebar {
+  width: 196px;
+  flex-shrink: 0;
+  background: #c0c0c0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-right: 2px solid #888;
+  overflow-y: auto;
+  padding: 5px;
+}
+fieldset {
+  border: 1px solid #808080;
+  box-shadow: 1px 1px #fff;
+  padding: 5px 6px 6px;
+}
+fieldset legend {
+  font-size: 11px;
+  background: #c0c0c0;
+  padding: 0 3px;
+  font-weight: bold;
+}
+.slider95 {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #808080;
+  box-shadow: inset 1px 1px #000, inset -1px -1px #dfdfdf;
+  outline: none;
+  margin: 2px 0;
+}
+.slider95::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px; height: 19px;
+  background: #c0c0c0;
+  box-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  cursor: pointer;
+}
+.swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+}
+.swatch {
+  width: 18px; height: 14px;
+  cursor: pointer;
+  box-shadow: inset -1px -1px #000, inset 1px 1px #fff;
+}
+.swatch:hover { box-shadow: inset -1px -1px #fff, inset 1px 1px #000; transform: scale(1.1); }
+.swatch.sw-active { box-shadow: inset 2px 2px #000, inset -2px -2px #fff; }
+.hex-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+}
+.hex-preview {
+  width: 26px; height: 18px;
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #dfdfdf;
+  flex-shrink: 0;
+}
+.hex-input {
+  flex: 1;
+  background: #fff;
+  border: none;
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #dfdfdf;
+  padding: 1px 3px;
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+}
+.row-label { font-size: 10px; color: #444; }
+.layers-box {
+  min-height: 50px;
+  max-height: 100px;
+  background: #fff;
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #dfdfdf;
+  overflow-y: auto;
+  font-size: 10px;
+}
+.layer-item {
+  padding: 2px 5px;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.layer-item:hover { background: #000080; color: #fff; }
+.layer-item.lsel { background: #000080; color: #fff; }
+.layer-vis { cursor: pointer; flex-shrink: 0; font-size: 10px; }
+.no-layers { color: #808080; font-style: italic; padding: 3px 5px; font-size: 10px; }
+.layer-btns { display: flex; gap: 2px; margin-top: 4px; }
+.layer-btns .btn95 { flex: 1; font-size: 10px; padding: 2px 4px; }
+
+/* canvas area */
+.paint-canvas-area {
+  flex: 1;
+  background: #7a7a7a;
+  overflow: auto;
+  padding: 10px;
+  position: relative;
+  min-width: 0;
+}
+.zoom-wrapper {
+  display: inline-block;
+  position: relative;
+  transform-origin: top left;
+}
+#main-canvas {
+  display: block;
+  background: #fff;
+  box-shadow: 3px 3px 8px rgba(0,0,0,0.5), inset 1px 1px #ccc;
+}
+
+/* canvas cursor states */
+#main-canvas.cur-brush    { cursor: crosshair; }
+#main-canvas.cur-eraser   { cursor: cell; }
+#main-canvas.cur-fill     { cursor: crosshair; }
+#main-canvas.cur-pick     { cursor: crosshair; }
+#main-canvas.cur-line     { cursor: crosshair; }
+#main-canvas.cur-rect     { cursor: crosshair; }
+#main-canvas.cur-ellipse  { cursor: crosshair; }
+#main-canvas.cur-select   { cursor: crosshair; }
+#main-canvas.cur-text     { cursor: text; }
+
+/* overlays */
+#sel-overlay {
+  position: absolute;
+  border: 1px dashed #000;
+  box-shadow: 0 0 0 1px #fff;
+  pointer-events: none;
+  display: none;
+  animation: marchingAnts 0.6s linear infinite;
+}
+@keyframes marchingAnts {
+  from { border-dash-offset: 0; }
+  to   { stroke-dashoffset: 20; }
+}
+#text-overlay {
+  position: absolute;
+  background: rgba(255,255,255,0.1);
+  border: 1px dashed #0008;
+  outline: none;
+  resize: none;
+  padding: 2px;
+  display: none;
+  min-width: 60px;
+  min-height: 20px;
+  font-family: Arial, sans-serif;
+  line-height: 1.3;
+  overflow: hidden;
+}
+
+/* status bar */
+.paint-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 6px;
+  background: #c0c0c0;
+  border-top: 1px solid #808080;
+  font-size: 11px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.sbar { padding: 1px 6px; box-shadow: inset 1px 1px #808080, inset -1px -1px #dfdfdf; }
+.sbar-right { margin-left: auto; }
+
+/* resize grip */
+.win-resize {
+  position: absolute;
+  right: 0; bottom: 0;
+  width: 14px; height: 14px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, #808080 50%, #808080 60%, transparent 60%, transparent 70%, #808080 70%, #808080 80%, transparent 80%);
+}
+
+/* ===== MY DRAWINGS WINDOW ===== */
+.drawings-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  gap: 4px;
+  border-bottom: 1px solid #808080;
+  flex-shrink: 0;
+}
+.drawings-count { margin-left: auto; font-size: 11px; }
+.drawings-grid {
+  flex: 1;
+  padding: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-content: flex-start;
+  background: #fff;
+  overflow-y: auto;
+  box-shadow: inset 1px 1px #808080;
+}
+.d-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid transparent;
+  cursor: default;
+  width: 100px;
+}
+.d-thumb:hover { border-color: #000080; background: rgba(0,0,128,0.08); }
+.d-thumb.dsel { border-color: #000080; background: rgba(0,0,128,0.18); }
+.d-thumb img {
+  width: 88px; height: 66px;
+  object-fit: cover;
+  border: 1px solid #808080;
+  background: #fff;
+}
+.d-thumb span {
+  font-size: 10px;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+.d-empty { color: #808080; font-style: italic; font-size: 12px; width: 100%; text-align: center; padding: 40px 0; }
+
+/* ===== NOTEPAD WINDOW ===== */
+.notepad-body {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  background: #fff;
+  box-shadow: inset 1px 1px #808080;
+  white-space: pre;
+  line-height: 1.5;
+}
+
+/* ===== ABOUT WINDOW ===== */
+.about-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+}
+.about-title { font-size: 13px; font-weight: bold; }
+.about-desc { font-size: 11px; text-align: center; line-height: 1.7; }
+.about-ver { font-size: 10px; color: #666; }
+
+/* ===== NEON MODE ===== */
+body.neon #main-canvas { filter: none; }
+body.neon .paint-canvas-area { background: #111; }
+
+/* ===== SCROLLBARS ===== */
+::-webkit-scrollbar { width: 16px; height: 16px; }
+::-webkit-scrollbar-track { background: #c0c0c0; }
+::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  box-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+}
+::-webkit-scrollbar-button { background: #c0c0c0; box-shadow: inset -1px -1px #000, inset 1px 1px #fff; height: 16px; width: 16px; display: block; }
+::-webkit-scrollbar-corner { background: #c0c0c0; }
+
+/* ===== CONTEXT MENU ===== */
+#ctx-menu {
+  position: fixed;
+  background: #c0c0c0;
+  box-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, 3px 3px 0 rgba(0,0,0,0.3);
+  display: none;
+  z-index: 10001;
+  min-width: 150px;
+  padding: 2px 0;
+}
+#ctx-menu.visible { display: block; }
+.ctx-item { padding: 4px 20px; font-size: 11px; cursor: default; }
+.ctx-item:hover { background: #000080; color: #fff; }
+.ctx-sep { height: 1px; background: #808080; margin: 2px 2px; box-shadow: 0 1px #fff; }
+
+#img-upload { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ===== DESKTOP ===== -->
+<div id="desktop">
+  <!-- PAINT95 ICON -->
+  <div class="desktop-icon" style="left:16px;top:16px" ondblclick="openPaint()">
+    <svg class="icon-img" viewBox="0 0 32 32" shape-rendering="crispEdges">
+      <!-- Beveled outer shell -->
+      <rect width="32" height="32" fill="#c0c0c0"/>
+      <rect x="0" y="0" width="32" height="1" fill="#ffffff"/>
+      <rect x="0" y="0" width="1" height="32" fill="#ffffff"/>
+      <rect x="31" y="0" width="1" height="32" fill="#000000"/>
+      <rect x="0" y="31" width="32" height="1" fill="#000000"/>
+      <rect x="1" y="1" width="30" height="1" fill="#dfdfdf"/>
+      <rect x="1" y="1" width="1" height="30" fill="#dfdfdf"/>
+      <rect x="30" y="1" width="1" height="30" fill="#808080"/>
+      <rect x="1" y="30" width="30" height="1" fill="#808080"/>
+      <!-- White canvas inset -->
+      <rect x="3" y="3" width="20" height="15" fill="#ffffff"/>
+      <rect x="3" y="3" width="20" height="1" fill="#808080"/>
+      <rect x="3" y="3" width="1" height="15" fill="#808080"/>
+      <rect x="22" y="3" width="1" height="15" fill="#404040"/>
+      <rect x="3" y="17" width="20" height="1" fill="#404040"/>
+      <!-- Pixel-art squiggles on canvas -->
+      <rect x="5" y="6" width="2" height="2" fill="#cc0000"/>
+      <rect x="7" y="5" width="2" height="2" fill="#cc0000"/>
+      <rect x="9" y="7" width="2" height="2" fill="#cc0000"/>
+      <rect x="11" y="5" width="2" height="2" fill="#cc0000"/>
+      <rect x="13" y="8" width="2" height="2" fill="#cc0000"/>
+      <rect x="15" y="6" width="2" height="2" fill="#cc0000"/>
+      <rect x="5" y="11" width="2" height="2" fill="#0000bb"/>
+      <rect x="7" y="10" width="2" height="2" fill="#0000bb"/>
+      <rect x="9" y="12" width="2" height="2" fill="#0000bb"/>
+      <rect x="11" y="10" width="2" height="2" fill="#0000bb"/>
+      <rect x="13" y="13" width="2" height="2" fill="#0000bb"/>
+      <rect x="15" y="11" width="2" height="2" fill="#0000bb"/>
+      <!-- Paintbrush (diagonal, bottom-right) -->
+      <rect x="24" y="4" width="2" height="2" fill="#c8a000"/>
+      <rect x="23" y="6" width="2" height="2" fill="#c8a000"/>
+      <rect x="22" y="8" width="2" height="2" fill="#c8a000"/>
+      <rect x="21" y="10" width="2" height="2" fill="#c8a000"/>
+      <rect x="20" y="12" width="2" height="2" fill="#c8a000"/>
+      <rect x="19" y="14" width="2" height="2" fill="#c8a000"/>
+      <rect x="18" y="16" width="2" height="2" fill="#c0a0a0"/>
+      <!-- Brush tip -->
+      <rect x="17" y="18" width="2" height="3" fill="#cc5500"/>
+      <rect x="16" y="20" width="4" height="2" fill="#aa3300"/>
+      <rect x="17" y="22" width="2" height="2" fill="#882200"/>
+      <!-- Ink drop (palette blob) -->
+      <rect x="24" y="20" width="5" height="4" fill="#ff66cc"/>
+      <rect x="23" y="21" width="1" height="2" fill="#ff66cc"/>
+      <rect x="29" y="21" width="1" height="2" fill="#ff66cc"/>
+      <rect x="25" y="24" width="3" height="1" fill="#ff66cc"/>
+      <rect x="24" y="20" width="5" height="1" fill="#ffaadd"/>
+      <rect x="24" y="20" width="1" height="4" fill="#ffaadd"/>
+    </svg>
+    <span>Paint95</span>
+  </div>
+
+  <!-- MY DRAWINGS ICON -->
+  <div class="desktop-icon" style="left:16px;top:106px" ondblclick="openDrawings()">
+    <svg class="icon-img" viewBox="0 0 32 32" shape-rendering="crispEdges">
+      <!-- Folder tab -->
+      <rect x="2" y="8" width="11" height="3" fill="#e8b000"/>
+      <rect x="2" y="8" width="11" height="1" fill="#ffee66"/>
+      <rect x="2" y="8" width="1" height="3" fill="#ffee66"/>
+      <rect x="12" y="8" width="1" height="3" fill="#806000"/>
+      <!-- Folder body -->
+      <rect x="2" y="10" width="28" height="19" fill="#f0c030"/>
+      <!-- Bevel highlight -->
+      <rect x="2" y="10" width="28" height="1" fill="#ffee88"/>
+      <rect x="2" y="10" width="1" height="19" fill="#ffee88"/>
+      <!-- Bevel shadow -->
+      <rect x="29" y="10" width="1" height="19" fill="#806000"/>
+      <rect x="2" y="28" width="28" height="1" fill="#806000"/>
+      <rect x="28" y="11" width="1" height="17" fill="#b08000"/>
+      <rect x="3" y="27" width="25" height="1" fill="#b08000"/>
+      <!-- 4 mini drawing thumbnails -->
+      <!-- top-left: landscape (blue+green) -->
+      <rect x="5" y="13" width="10" height="6" fill="#88ccff"/>
+      <rect x="5" y="16" width="10" height="3" fill="#44aa44"/>
+      <rect x="7" y="13" width="3" height="3" fill="#ffee00"/>
+      <rect x="5" y="13" width="10" height="1" fill="#404040"/>
+      <rect x="5" y="13" width="1" height="6" fill="#404040"/>
+      <rect x="14" y="13" width="1" height="6" fill="#404040"/>
+      <rect x="5" y="18" width="10" height="1" fill="#404040"/>
+      <!-- top-right: red abstract -->
+      <rect x="17" y="13" width="10" height="6" fill="#fffacc"/>
+      <rect x="18" y="14" width="4" height="4" fill="#cc2200"/>
+      <rect x="22" y="15" width="3" height="3" fill="#ff6600"/>
+      <rect x="17" y="13" width="10" height="1" fill="#404040"/>
+      <rect x="17" y="13" width="1" height="6" fill="#404040"/>
+      <rect x="26" y="13" width="1" height="6" fill="#404040"/>
+      <rect x="17" y="18" width="10" height="1" fill="#404040"/>
+      <!-- bottom-left: purple/pink -->
+      <rect x="5" y="21" width="10" height="5" fill="#ffccee"/>
+      <rect x="6" y="22" width="3" height="3" fill="#aa44cc"/>
+      <rect x="10" y="23" width="4" height="2" fill="#ee88bb"/>
+      <rect x="5" y="21" width="10" height="1" fill="#404040"/>
+      <rect x="5" y="21" width="1" height="5" fill="#404040"/>
+      <rect x="14" y="21" width="1" height="5" fill="#404040"/>
+      <rect x="5" y="25" width="10" height="1" fill="#404040"/>
+      <!-- bottom-right: green hills -->
+      <rect x="17" y="21" width="10" height="5" fill="#ccffcc"/>
+      <rect x="17" y="21" width="10" height="2" fill="#aaddff"/>
+      <rect x="19" y="22" width="4" height="3" fill="#33aa33"/>
+      <rect x="17" y="21" width="10" height="1" fill="#404040"/>
+      <rect x="17" y="21" width="1" height="5" fill="#404040"/>
+      <rect x="26" y="21" width="1" height="5" fill="#404040"/>
+      <rect x="17" y="25" width="10" height="1" fill="#404040"/>
+    </svg>
+    <span>My Drawings</span>
+  </div>
+
+  <!-- READ ME ICON -->
+  <div class="desktop-icon" style="left:16px;top:196px" ondblclick="openNotepad()">
+    <svg class="icon-img" viewBox="0 0 32 32" shape-rendering="crispEdges">
+      <!-- Page shadow -->
+      <rect x="7" y="4" width="20" height="26" fill="#808080"/>
+      <!-- Page body -->
+      <rect x="5" y="2" width="20" height="26" fill="#ffffff"/>
+      <!-- Dog-ear fold -->
+      <rect x="20" y="2" width="5" height="5" fill="#c0c0c0"/>
+      <rect x="20" y="6" width="5" height="1" fill="#808080"/>
+      <rect x="20" y="2" width="1" height="5" fill="#808080"/>
+      <!-- Fold crease line -->
+      <polygon points="20,2 25,7 20,7" fill="#e0e0e0"/>
+      <!-- Page border -->
+      <rect x="5" y="2" width="20" height="1" fill="#808080"/>
+      <rect x="5" y="2" width="1" height="26" fill="#808080"/>
+      <rect x="24" y="7" width="1" height="21" fill="#808080"/>
+      <rect x="5" y="27" width="20" height="1" fill="#808080"/>
+      <!-- Page inner highlight -->
+      <rect x="6" y="3" width="14" height="1" fill="#e8e8ff"/>
+      <rect x="6" y="3" width="1" height="24" fill="#e8e8ff"/>
+      <!-- Ruled lines (blue tint) -->
+      <rect x="7" y="9"  width="15" height="1" fill="#c8d8f0"/>
+      <rect x="7" y="12" width="15" height="1" fill="#c8d8f0"/>
+      <rect x="7" y="15" width="15" height="1" fill="#c8d8f0"/>
+      <rect x="7" y="18" width="15" height="1" fill="#c8d8f0"/>
+      <rect x="7" y="21" width="15" height="1" fill="#c8d8f0"/>
+      <rect x="7" y="24" width="15" height="1" fill="#c8d8f0"/>
+      <!-- Text content (black pixel lines) -->
+      <rect x="7" y="8"  width="13" height="1" fill="#000000"/>
+      <rect x="7" y="11" width="15" height="1" fill="#000000"/>
+      <rect x="7" y="14" width="11" height="1" fill="#000000"/>
+      <rect x="7" y="17" width="14" height="1" fill="#000000"/>
+      <rect x="7" y="20" width="15" height="1" fill="#000000"/>
+      <rect x="7" y="23" width="9"  height="1" fill="#000000"/>
+    </svg>
+    <span>Read Me.txt</span>
+  </div>
+
+  <!-- ABOUT ICON -->
+  <div class="desktop-icon" style="left:16px;top:286px" ondblclick="openAbout()">
+    <svg class="icon-img" viewBox="0 0 32 32" shape-rendering="crispEdges">
+      <!-- CRT Monitor shell -->
+      <rect x="2" y="3" width="28" height="20" fill="#c0c0c0"/>
+      <!-- Monitor bevel highlight -->
+      <rect x="2" y="3" width="28" height="1" fill="#ffffff"/>
+      <rect x="2" y="3" width="1" height="20" fill="#ffffff"/>
+      <rect x="3" y="4" width="26" height="1" fill="#dfdfdf"/>
+      <rect x="3" y="4" width="1" height="18" fill="#dfdfdf"/>
+      <!-- Monitor bevel shadow -->
+      <rect x="29" y="3" width="1" height="20" fill="#000000"/>
+      <rect x="2" y="22" width="28" height="1" fill="#000000"/>
+      <rect x="28" y="4" width="1" height="18" fill="#808080"/>
+      <rect x="3" y="21" width="25" height="1" fill="#808080"/>
+      <!-- Screen (dark blue) -->
+      <rect x="5" y="6" width="20" height="13" fill="#000080"/>
+      <!-- Screen inner glow border -->
+      <rect x="5" y="6" width="20" height="1" fill="#0000cc"/>
+      <rect x="5" y="6" width="1" height="13" fill="#0000cc"/>
+      <!-- Pixel "i" on screen in yellow -->
+      <rect x="14" y="8"  width="4" height="1" fill="#ffff00"/>
+      <rect x="15" y="9"  width="2" height="1" fill="#ffff00"/>
+      <rect x="14" y="10" width="4" height="4" fill="#ffff00"/>
+      <rect x="14" y="14" width="4" height="1" fill="#ffff00"/>
+      <!-- Stars on screen -->
+      <rect x="7"  y="7"  width="1" height="1" fill="#ffffff"/>
+      <rect x="9"  y="9"  width="1" height="1" fill="#ffffff"/>
+      <rect x="22" y="8"  width="1" height="1" fill="#ffffff"/>
+      <rect x="21" y="11" width="1" height="1" fill="#ffffff"/>
+      <rect x="8"  y="13" width="1" height="1" fill="#ffffff"/>
+      <!-- Monitor neck -->
+      <rect x="13" y="23" width="6" height="2" fill="#a0a0a0"/>
+      <rect x="13" y="23" width="6" height="1" fill="#c0c0c0"/>
+      <!-- Monitor base/foot -->
+      <rect x="9"  y="25" width="14" height="3" fill="#c0c0c0"/>
+      <rect x="9"  y="25" width="14" height="1" fill="#ffffff"/>
+      <rect x="9"  y="25" width="1"  height="3" fill="#ffffff"/>
+      <rect x="22" y="25" width="1"  height="3" fill="#808080"/>
+      <rect x="9"  y="27" width="14" height="1" fill="#808080"/>
+      <!-- Power LED (green dot) -->
+      <rect x="24" y="19" width="2" height="1" fill="#00ff00"/>
+    </svg>
+    <span>About</span>
+  </div>
+</div>
+
+<!-- ===== PAINT WINDOW ===== -->
+<div class="window" id="win-paint" style="width:940px;height:600px;top:28px;left:76px;">
+  <div class="title-bar" id="tb-paint">
+    <svg class="title-bar-icon" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect width="16" height="16" fill="#c0c0c0"/><rect x="1" y="1" width="9" height="7" fill="#ffffff"/><rect x="1" y="1" width="9" height="1" fill="#808080"/><rect x="1" y="1" width="1" height="7" fill="#808080"/><rect x="9" y="1" width="1" height="7" fill="#404040"/><rect x="1" y="7" width="9" height="1" fill="#404040"/><rect x="3" y="3" width="1" height="1" fill="#cc0000"/><rect x="4" y="2" width="1" height="1" fill="#cc0000"/><rect x="5" y="3" width="1" height="1" fill="#cc0000"/><rect x="6" y="2" width="1" height="1" fill="#cc0000"/><rect x="7" y="4" width="1" height="1" fill="#cc0000"/><rect x="3" y="5" width="1" height="1" fill="#0000bb"/><rect x="4" y="4" width="1" height="1" fill="#0000bb"/><rect x="5" y="5" width="1" height="1" fill="#0000bb"/><rect x="6" y="4" width="1" height="1" fill="#0000bb"/><rect x="7" y="6" width="1" height="1" fill="#0000bb"/><rect x="12" y="2" width="1" height="1" fill="#c8a000"/><rect x="11" y="3" width="1" height="1" fill="#c8a000"/><rect x="10" y="4" width="1" height="1" fill="#c8a000"/><rect x="11" y="8" width="2" height="5" fill="#cc5500"/><rect x="10" y="10" width="4" height="2" fill="#aa3300"/><rect x="11" y="13" width="2" height="1" fill="#882200"/></svg>
+    <span class="title-bar-text">Paint95.exe</span>
+    <span style="font-weight:normal;font-size:10px;margin-left:auto;margin-right:4px;">Sheet:</span>
+    <input class="sheet-input" id="sheet-name" value="Untitled.stk" spellcheck="false">
+    <div class="title-controls" style="margin-left:4px;">
+      <button class="tc-btn" onclick="minWin('win-paint','paint')" title="Minimize">&#x2501;</button>
+      <button class="tc-btn" onclick="maxWin('win-paint')" title="Maximize">&#x25A1;</button>
+      <button class="tc-btn" onclick="closeWin('win-paint','paint')" title="Close" style="font-weight:bold;margin-left:1px;">&#x2715;</button>
+    </div>
+  </div>
+
+  <div class="menu-bar">
+    <span>File</span><span>Edit</span><span>View</span><span>Image</span><span>Help</span>
+  </div>
+
+  <div class="paint-toolbar">
+    <button class="btn95" id="ubtn-undo" onclick="undo()" disabled>&#8634; Undo</button>
+    <button class="btn95" id="ubtn-redo" onclick="redo()" disabled>&#8635; Redo</button>
+    <div class="tsep"></div>
+    <button class="btn95 tool-active" id="tbtn-brush"     onclick="setTool('brush')"    title="Brush [B]">&#x1F58C; Brush</button>
+    <button class="btn95" id="tbtn-eraser"    onclick="setTool('eraser')"   title="Eraser [E]">&#x25A1; Erase</button>
+    <button class="btn95" id="tbtn-fill"      onclick="setTool('fill')"     title="Fill [F]">&#x25A0; Fill</button>
+    <button class="btn95" id="tbtn-pick"      onclick="setTool('pick')"     title="Eyedropper [I]">&#x2DA; Pick</button>
+    <div class="tsep"></div>
+    <button class="btn95" id="tbtn-line"      onclick="setTool('line')"     title="Line [L]">&#x2571; Line</button>
+    <button class="btn95" id="tbtn-rect"      onclick="setTool('rect')"     title="Rectangle [R]">&#x25AD; Rect</button>
+    <button class="btn95" id="tbtn-ellipse"   onclick="setTool('ellipse')"  title="Ellipse [O]">&#x25CB; Oval</button>
+    <div class="tsep"></div>
+    <button class="btn95" id="tbtn-select"    onclick="setTool('select')"   title="Select [S]">&#x2610; Select</button>
+    <button class="btn95" id="tbtn-text"      onclick="setTool('text')"     title="Text [T]">T Text</button>
+    <div class="tsep"></div>
+    <button class="btn95" onclick="triggerUpload()" title="Upload image">&#x1F4C2; Upload</button>
+    <input type="file" id="img-upload" accept="image/*">
+    <div class="tsep"></div>
+    <button class="btn95" onclick="saveDrawing()" title="Save [Ctrl+S]">&#x1F4BE; Save</button>
+    <button class="btn95" onclick="downloadCanvas()" title="Download PNG [Ctrl+D]">&#x2B07; Download</button>
+    <button class="btn95" onclick="newCanvas()" title="New canvas">&#x2715; New</button>
+  </div>
+
+  <div class="paint-options">
+    <span>Size:</span>
+    <input class="num-input" id="opt-size" type="number" min="1" max="100" value="4" oninput="syncSize(this.value)">
+    <span>FG:</span>
+    <div class="color-chip" id="chip-fg" style="background:#000" onclick="pickColor('fg')" title="Foreground (click)"></div>
+    <span>BG:</span>
+    <div class="color-chip" id="chip-bg" style="background:#fff" onclick="pickColor('bg')" title="Background (right-click palette)"></div>
+    <label style="display:flex;align-items:center;gap:3px;cursor:pointer;"><input type="checkbox" id="opt-neon" onchange="toggleNeon()"> Neon</label>
+    <label style="display:flex;align-items:center;gap:3px;cursor:pointer;"><input type="checkbox" id="opt-filled"> Filled</label>
+    <span style="margin-left:auto;">Canvas BG:</span>
+    <div class="color-chip" id="chip-canvas" style="background:#fff" onclick="pickColor('canvas')" title="Canvas background"></div>
+    <label style="display:flex;align-items:center;gap:3px;cursor:pointer;"><input type="checkbox" id="opt-zoom" onchange="toggleZoom()"> 2x Zoom</label>
+  </div>
+
+  <div class="paint-body">
+    <div class="paint-sidebar">
+      <fieldset>
+        <legend>Brush</legend>
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+          <span class="row-label">Size</span>
+          <span id="size-lbl" class="row-label">4px</span>
+        </div>
+        <input class="slider95" id="size-slider" type="range" min="1" max="100" value="4" oninput="syncSize(this.value)">
+        <div style="margin:6px 0 3px;" class="row-label">Opacity</div>
+        <input class="slider95" id="opacity-slider" type="range" min="1" max="100" value="100" oninput="syncOpacity(this.value)">
+        <div style="display:flex;justify-content:space-between;margin-top:1px;">
+          <span class="row-label">1%</span>
+          <span class="row-label" id="opacity-lbl">100%</span>
+          <span class="row-label">100%</span>
+        </div>
+
+        <div style="margin:6px 0 3px;" class="row-label">Color</div>
+        <div class="swatch-grid" id="swatch-grid"></div>
+        <div class="hex-row">
+          <div class="hex-preview" id="hex-prev" style="background:#000"></div>
+          <input class="hex-input" id="hex-in" type="text" value="#000000" maxlength="7" oninput="hexChanged(this.value)" spellcheck="false">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Layers</legend>
+        <div class="layers-box" id="layers-box">
+          <div class="no-layers">No layers yet</div>
+        </div>
+        <div class="layer-btns">
+          <button class="btn95" onclick="addLayer()">+ Add</button>
+          <button class="btn95" onclick="delLayer()">&#x2212; Del</button>
+          <button class="btn95" onclick="mergeLayers()">Merge</button>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="paint-canvas-area" id="canvas-area">
+      <div class="zoom-wrapper" id="zoom-wrapper">
+        <canvas id="main-canvas" width="720" height="480" class="cur-brush"></canvas>
+        <div id="sel-overlay"></div>
+        <textarea id="text-overlay" rows="2" spellcheck="false"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="paint-status">
+    <div class="sbar" id="sb-layers">0 layers</div>
+    <div class="sbar">720&times;480px</div>
+    <div class="sbar" id="sb-tool">Tool: brush</div>
+    <div class="sbar" id="sb-pos"></div>
+    <div class="sbar sbar-right" id="sb-zoom">Zoom: 100%</div>
+  </div>
+  <div class="win-resize" id="paint-resize"></div>
+</div>
+
+<!-- ===== MY DRAWINGS WINDOW ===== -->
+<div class="window" id="win-drawings" style="width:510px;height:380px;top:55px;left:100px;">
+  <div class="title-bar" id="tb-drawings">
+    <svg class="title-bar-icon" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="1" y="4" width="6" height="2" fill="#e8b000"/><rect x="1" y="4" width="6" height="1" fill="#ffee66"/><rect x="1" y="5" width="14" height="10" fill="#f0c030"/><rect x="1" y="5" width="14" height="1" fill="#ffee88"/><rect x="1" y="5" width="1" height="10" fill="#ffee88"/><rect x="14" y="5" width="1" height="10" fill="#806000"/><rect x="1" y="14" width="14" height="1" fill="#806000"/><rect x="3" y="7" width="4" height="3" fill="#88ccff"/><rect x="3" y="9" width="4" height="1" fill="#44aa44"/><rect x="3" y="7" width="4" height="1" fill="#404040"/><rect x="3" y="7" width="1" height="3" fill="#404040"/><rect x="6" y="7" width="1" height="3" fill="#404040"/><rect x="3" y="9" width="4" height="1" fill="#404040"/><rect x="9" y="7" width="4" height="3" fill="#fffacc"/><rect x="9" y="7" width="2" height="2" fill="#cc2200"/><rect x="9" y="7" width="4" height="1" fill="#404040"/><rect x="9" y="7" width="1" height="3" fill="#404040"/><rect x="12" y="7" width="1" height="3" fill="#404040"/><rect x="9" y="9" width="4" height="1" fill="#404040"/><rect x="3" y="11" width="4" height="3" fill="#ffccee"/><rect x="4" y="12" width="2" height="1" fill="#aa44cc"/><rect x="3" y="11" width="4" height="1" fill="#404040"/><rect x="3" y="11" width="1" height="3" fill="#404040"/><rect x="6" y="11" width="1" height="3" fill="#404040"/><rect x="9" y="11" width="4" height="3" fill="#ccffcc"/><rect x="9" y="11" width="4" height="1" fill="#404040"/><rect x="9" y="11" width="1" height="3" fill="#404040"/><rect x="12" y="11" width="1" height="3" fill="#404040"/></svg>
+    <span class="title-bar-text">My Drawings</span>
+    <div class="title-controls">
+      <button class="tc-btn" onclick="minWin('win-drawings','drawings')">&#x2501;</button>
+      <button class="tc-btn" onclick="closeWin('win-drawings','drawings')">&#x2715;</button>
+    </div>
+  </div>
+  <div class="drawings-toolbar">
+    <button class="btn95" id="d-open-btn" onclick="openSelDrawing()" disabled>&#x270F; Open</button>
+    <button class="btn95" id="d-del-btn" onclick="delSelDrawing()" disabled>&#x2715; Delete</button>
+    <span class="drawings-count" id="d-count">0 items</span>
+  </div>
+  <div class="drawings-grid" id="drawings-grid">
+    <div class="d-empty">No saved drawings yet.<br>Use Save in Paint95 to add some.</div>
+  </div>
+</div>
+
+<!-- ===== NOTEPAD WINDOW ===== -->
+<div class="window" id="win-notepad" style="width:460px;height:340px;top:70px;left:120px;">
+  <div class="title-bar" id="tb-notepad">
+    <svg class="title-bar-icon" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="4" y="1" width="9" height="13" fill="#808080"/><rect x="3" y="0" width="9" height="13" fill="#ffffff"/><rect x="9" y="0" width="3" height="3" fill="#c0c0c0"/><rect x="9" y="0" width="1" height="3" fill="#808080"/><rect x="9" y="2" width="3" height="1" fill="#808080"/><rect x="3" y="0" width="9" height="1" fill="#808080"/><rect x="3" y="0" width="1" height="13" fill="#808080"/><rect x="11" y="3" width="1" height="10" fill="#808080"/><rect x="3" y="12" width="9" height="1" fill="#808080"/><rect x="4" y="3" width="6" height="1" fill="#c8d8f0"/><rect x="4" y="4" width="5" height="1" fill="#000000"/><rect x="4" y="5" width="6" height="1" fill="#c8d8f0"/><rect x="4" y="6" width="6" height="1" fill="#000000"/><rect x="4" y="7" width="6" height="1" fill="#c8d8f0"/><rect x="4" y="8" width="4" height="1" fill="#000000"/><rect x="4" y="9" width="6" height="1" fill="#c8d8f0"/><rect x="4" y="10" width="5" height="1" fill="#000000"/></svg>
+    <span class="title-bar-text">Read Me.txt &mdash; Notepad</span>
+    <div class="title-controls">
+      <button class="tc-btn" onclick="minWin('win-notepad','notepad')">&#x2501;</button>
+      <button class="tc-btn" onclick="closeWin('win-notepad','notepad')">&#x2715;</button>
+    </div>
+  </div>
+  <div class="menu-bar"><span>File</span><span>Edit</span><span>Search</span><span>Help</span></div>
+  <div class="notepad-body">PAINT95 - READ ME
+==============================
+
+Welcome to Paint95 - Retro Drawing Studio!
+
+TOOLS
+-----
+  B  Brush      Freehand drawing with smooth strokes
+  E  Eraser     Paint background color over strokes
+  F  Fill       Flood-fill a region (with tolerance)
+  I  Pick       Eyedropper - sample any pixel color
+  L  Line       Click and drag for a straight line
+  R  Rect       Click and drag for a rectangle
+  O  Oval       Click and drag for an ellipse
+  S  Select     Drag a selection; Delete to clear it
+  T  Text       Click canvas, type, Enter to stamp
+
+TIPS
+----
+  - Shift+click a palette swatch to set BG color
+  - Right-click a palette swatch to set BG color
+  - Toggle "Filled" for solid vs outline shapes
+  - Toggle "Neon" for a dark canvas with glow effect
+  - Use "2x Zoom" to paint fine pixel detail
+  - Layers are cosmetic labels only (single canvas)
+  - Save stores to browser localStorage
+  - Download exports a full PNG file
+
+KEYBOARD SHORTCUTS
+------------------
+  Ctrl+Z    Undo
+  Ctrl+Y    Redo
+  Ctrl+S    Save to My Drawings
+  Ctrl+D    Download PNG
+  Delete    Clear selection area
+  B/E/F/I/L/R/O/S/T  Switch tools
+  [  /  ]   Decrease / Increase brush size
+
+==============================
+Paint95 v1.1 - Pure HTML/CSS/JS
+GitHub Pages ready - no build step needed
+</div>
+</div>
+
+<!-- ===== ABOUT WINDOW ===== -->
+<div class="window" id="win-about" style="width:320px;height:230px;top:160px;left:220px;">
+  <div class="title-bar" id="tb-about">
+    <svg class="title-bar-icon" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="1" y="1" width="14" height="10" fill="#c0c0c0"/><rect x="1" y="1" width="14" height="1" fill="#ffffff"/><rect x="1" y="1" width="1" height="10" fill="#ffffff"/><rect x="14" y="1" width="1" height="10" fill="#000000"/><rect x="1" y="10" width="14" height="1" fill="#000000"/><rect x="2" y="2" width="12" height="7" fill="#000080"/><rect x="7" y="3" width="2" height="1" fill="#ffff00"/><rect x="7" y="4" width="2" height="4" fill="#ffff00"/><rect x="7" y="8" width="2" height="1" fill="#ffff00"/><rect x="6" y="11" width="4" height="1" fill="#a0a0a0"/><rect x="5" y="12" width="6" height="2" fill="#c0c0c0"/><rect x="5" y="12" width="6" height="1" fill="#ffffff"/><rect x="5" y="13" width="6" height="1" fill="#808080"/></svg>
+    <span class="title-bar-text">About Paint95</span>
+    <div class="title-controls">
+      <button class="tc-btn" onclick="closeWin('win-about','about')">&#x2715;</button>
+    </div>
+  </div>
+  <div class="about-body">
+    <svg width="48" height="48" viewBox="0 0 48 48" shape-rendering="crispEdges">
+      <!-- CRT Monitor (large) -->
+      <rect x="3" y="4" width="42" height="30" fill="#c0c0c0"/>
+      <!-- Bevel highlight -->
+      <rect x="3" y="4" width="42" height="2" fill="#ffffff"/>
+      <rect x="3" y="4" width="2" height="30" fill="#ffffff"/>
+      <rect x="5" y="6" width="38" height="1" fill="#dfdfdf"/>
+      <rect x="5" y="6" width="1" height="27" fill="#dfdfdf"/>
+      <!-- Bevel shadow -->
+      <rect x="43" y="4" width="2" height="30" fill="#000000"/>
+      <rect x="3" y="32" width="42" height="2" fill="#000000"/>
+      <rect x="42" y="6" width="1" height="26" fill="#808080"/>
+      <rect x="4" y="31" width="38" height="1" fill="#808080"/>
+      <!-- Screen -->
+      <rect x="7" y="7" width="30" height="21" fill="#000080"/>
+      <rect x="7" y="7" width="30" height="2" fill="#0000bb"/>
+      <rect x="7" y="7" width="2" height="21" fill="#0000bb"/>
+      <!-- Large pixel "i" on screen -->
+      <rect x="20" y="10" width="8" height="3" fill="#ffff00"/>
+      <rect x="22" y="13" width="4" height="2" fill="#ffff00"/>
+      <rect x="20" y="15" width="8" height="7" fill="#ffff00"/>
+      <rect x="20" y="22" width="8" height="3" fill="#ffff00"/>
+      <!-- Stars -->
+      <rect x="10" y="9"  width="2" height="2" fill="#ffffff"/>
+      <rect x="14" y="12" width="2" height="2" fill="#ffffff"/>
+      <rect x="32" y="10" width="2" height="2" fill="#ffffff"/>
+      <rect x="30" y="16" width="2" height="2" fill="#ffffff"/>
+      <rect x="10" y="22" width="2" height="2" fill="#ffffff"/>
+      <!-- Monitor neck -->
+      <rect x="20" y="34" width="8" height="4" fill="#a0a0a0"/>
+      <rect x="20" y="34" width="8" height="2" fill="#c0c0c0"/>
+      <!-- Monitor base -->
+      <rect x="14" y="38" width="20" height="6" fill="#c0c0c0"/>
+      <rect x="14" y="38" width="20" height="2" fill="#ffffff"/>
+      <rect x="14" y="38" width="2" height="6" fill="#ffffff"/>
+      <rect x="32" y="38" width="2" height="6" fill="#808080"/>
+      <rect x="14" y="42" width="20" height="2" fill="#808080"/>
+      <!-- Power LED -->
+      <rect x="38" y="28" width="3" height="2" fill="#00ff00"/>
+    </svg>
+    <div class="about-title">Paint95 - Retro Drawing Studio</div>
+    <div class="about-desc">A Windows 95-inspired drawing canvas.<br>Draw, fill, layer, and export your art.</div>
+    <div class="about-ver">Version 1.1 &bull; Pure HTML / CSS / JS &bull; No dependencies</div>
+    <button class="btn95" style="width:70px;margin-top:6px;" onclick="closeWin('win-about','about')">OK</button>
+  </div>
+</div>
+
+<!-- ===== START MENU ===== -->
+<div id="start-menu">
+  <div class="start-sidebar"><span>Paint95</span></div>
+  <div class="start-items">
+    <div class="start-item" onclick="openPaint();closeStart()">
+      <svg width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect width="16" height="16" fill="#c0c0c0"/><rect x="1" y="1" width="9" height="7" fill="#ffffff"/><rect x="1" y="1" width="9" height="1" fill="#808080"/><rect x="1" y="1" width="1" height="7" fill="#808080"/><rect x="9" y="1" width="1" height="7" fill="#404040"/><rect x="1" y="7" width="9" height="1" fill="#404040"/><rect x="3" y="3" width="1" height="1" fill="#cc0000"/><rect x="4" y="2" width="1" height="1" fill="#cc0000"/><rect x="5" y="3" width="1" height="1" fill="#cc0000"/><rect x="6" y="2" width="1" height="1" fill="#cc0000"/><rect x="7" y="4" width="1" height="1" fill="#cc0000"/><rect x="3" y="5" width="1" height="1" fill="#0000bb"/><rect x="4" y="4" width="1" height="1" fill="#0000bb"/><rect x="5" y="5" width="1" height="1" fill="#0000bb"/><rect x="6" y="4" width="1" height="1" fill="#0000bb"/><rect x="7" y="6" width="1" height="1" fill="#0000bb"/><rect x="11" y="2" width="1" height="1" fill="#c8a000"/><rect x="10" y="3" width="1" height="1" fill="#c8a000"/><rect x="11" y="9" width="2" height="4" fill="#cc5500"/><rect x="10" y="11" width="4" height="2" fill="#aa3300"/></svg>
+      Paint95
+    </div>
+    <div class="start-item" onclick="openDrawings();closeStart()">
+      <svg width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="1" y="4" width="6" height="2" fill="#e8b000"/><rect x="1" y="4" width="6" height="1" fill="#ffee66"/><rect x="1" y="5" width="14" height="10" fill="#f0c030"/><rect x="1" y="5" width="14" height="1" fill="#ffee88"/><rect x="1" y="5" width="1" height="10" fill="#ffee88"/><rect x="14" y="5" width="1" height="10" fill="#806000"/><rect x="1" y="14" width="14" height="1" fill="#806000"/><rect x="3" y="7" width="4" height="3" fill="#88ccff"/><rect x="3" y="8" width="4" height="2" fill="#44aa44"/><rect x="3" y="7" width="4" height="1" fill="#404040"/><rect x="3" y="7" width="1" height="3" fill="#404040"/><rect x="6" y="7" width="1" height="3" fill="#404040"/><rect x="3" y="9" width="4" height="1" fill="#404040"/><rect x="9" y="7" width="4" height="3" fill="#fffacc"/><rect x="9" y="7" width="2" height="2" fill="#cc2200"/><rect x="9" y="7" width="4" height="1" fill="#404040"/><rect x="9" y="7" width="1" height="3" fill="#404040"/><rect x="12" y="7" width="1" height="3" fill="#404040"/><rect x="9" y="9" width="4" height="1" fill="#404040"/><rect x="3" y="11" width="4" height="2" fill="#ffccee"/><rect x="4" y="11" width="2" height="1" fill="#aa44cc"/><rect x="3" y="11" width="4" height="1" fill="#404040"/><rect x="3" y="11" width="1" height="2" fill="#404040"/><rect x="6" y="11" width="1" height="2" fill="#404040"/><rect x="3" y="12" width="4" height="1" fill="#404040"/><rect x="9" y="11" width="4" height="2" fill="#ccffcc"/><rect x="9" y="11" width="4" height="1" fill="#404040"/><rect x="9" y="11" width="1" height="2" fill="#404040"/><rect x="12" y="11" width="1" height="2" fill="#404040"/><rect x="9" y="12" width="4" height="1" fill="#404040"/></svg>
+      My Drawings
+    </div>
+    <div class="start-item" onclick="openNotepad();closeStart()">
+      <svg width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="4" y="1" width="9" height="13" fill="#808080"/><rect x="3" y="0" width="9" height="13" fill="#ffffff"/><rect x="9" y="0" width="3" height="3" fill="#c0c0c0"/><rect x="9" y="0" width="1" height="3" fill="#808080"/><rect x="9" y="2" width="3" height="1" fill="#808080"/><rect x="3" y="0" width="9" height="1" fill="#808080"/><rect x="3" y="0" width="1" height="13" fill="#808080"/><rect x="11" y="3" width="1" height="10" fill="#808080"/><rect x="3" y="12" width="9" height="1" fill="#808080"/><rect x="4" y="3" width="6" height="1" fill="#c8d8f0"/><rect x="4" y="4" width="5" height="1" fill="#000000"/><rect x="4" y="5" width="6" height="1" fill="#c8d8f0"/><rect x="4" y="6" width="6" height="1" fill="#000000"/><rect x="4" y="7" width="6" height="1" fill="#c8d8f0"/><rect x="4" y="8" width="4" height="1" fill="#000000"/><rect x="4" y="9" width="6" height="1" fill="#c8d8f0"/><rect x="4" y="10" width="5" height="1" fill="#000000"/></svg>
+      Read Me.txt
+    </div>
+    <div class="start-sep"></div>
+    <div class="start-item" onclick="openAbout();closeStart()">
+      <svg width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="1" y="1" width="14" height="10" fill="#c0c0c0"/><rect x="1" y="1" width="14" height="1" fill="#ffffff"/><rect x="1" y="1" width="1" height="10" fill="#ffffff"/><rect x="14" y="1" width="1" height="10" fill="#000000"/><rect x="1" y="10" width="14" height="1" fill="#000000"/><rect x="2" y="2" width="12" height="7" fill="#000080"/><rect x="7" y="3" width="2" height="1" fill="#ffff00"/><rect x="7" y="4" width="2" height="4" fill="#ffff00"/><rect x="7" y="8" width="2" height="1" fill="#ffff00"/><rect x="6" y="11" width="4" height="1" fill="#a0a0a0"/><rect x="5" y="12" width="6" height="2" fill="#c0c0c0"/><rect x="5" y="12" width="6" height="1" fill="#ffffff"/><rect x="5" y="13" width="6" height="1" fill="#808080"/></svg>
+      About Paint95
+    </div>
+    <div class="start-sep"></div>
+    <div class="start-item" onclick="closeStart()">
+      <svg width="16" height="16" viewBox="0 0 16 16"><rect width="16" height="16" fill="#c0c0c0"/><line x1="3" y1="3" x2="13" y2="13" stroke="#c00" stroke-width="2"/><line x1="13" y1="3" x2="3" y2="13" stroke="#c00" stroke-width="2"/></svg>
+      Shut Down
+    </div>
+  </div>
+</div>
+
+<!-- ===== TASKBAR ===== -->
+<div id="taskbar">
+  <button class="btn95" id="start-btn" onclick="toggleStart()">
+    <div class="start-logo">
+      <div class="sq-red"></div><div class="sq-green"></div>
+      <div class="sq-blue"></div><div class="sq-yellow"></div>
+    </div>
+    Start
+  </button>
+  <div id="taskbar-divider"></div>
+  <div id="taskbar-items"></div>
+  <div id="taskbar-clock">12:00 PM</div>
+</div>
+
+<!-- ===== CONTEXT MENU ===== -->
+<div id="ctx-menu">
+  <div class="ctx-item" onclick="openPaint();closeCtx()">Open Paint95</div>
+  <div class="ctx-item" onclick="openDrawings();closeCtx()">My Drawings</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="closeCtx()">Refresh Desktop</div>
+</div>
+
+<script>
+'use strict';
+
+/* ===========================================================
+   PAINT95 - RETRO DRAWING STUDIO  v1.1
+   Pure HTML/CSS/JS — GitHub Pages ready
+   =========================================================== */
+
+// ── PALETTE ──────────────────────────────────────────────────
+const PALETTE = [
+  '#000000','#808080','#800000','#ff0000','#ff6600','#ffff00',
+  '#006600','#00cc00','#006666','#00cccc','#000080','#0000ff',
+  '#660066','#cc00cc','#ff66cc','#ffffff',
+  '#333333','#aaaaaa','#804000','#ff8040','#ffbb00','#ffff99',
+  '#003300','#66ff00','#003333','#66ffff','#000033','#6666ff',
+  '#330033','#ff99cc','#ffccff','#dddddd',
+];
+
+// ── STATE ─────────────────────────────────────────────────────
+let tool       = 'brush';
+let brushSize  = 4;
+let opacity    = 1.0;
+let fgColor    = '#000000';
+let bgColor    = '#ffffff';
+let canvasBg   = '#ffffff';
+let neonMode   = false;
+let zoom       = 1;
+
+let drawing    = false;
+let lastX = 0, lastY = 0;
+let startX = 0, startY = 0;
+let snapshot   = null;   // ImageData before shape preview
+let selRect    = null;
+let textActive = false;
+let winZ       = 200;
+
+const undoStack = [];
+const redoStack = [];
+const layers    = [];
+let   activeLayer = -1;
+let   selDrawing  = null;
+
+const tbMap = {}; // tbId -> button element
+
+// ── CANVAS SETUP ──────────────────────────────────────────────
+const canvas  = document.getElementById('main-canvas');
+const ctx     = canvas.getContext('2d');
+
+function init() {
+  buildPalette();
+  paintBg();
+  pushUndo();
+  updateUndoBtns();
+  updateClock();
+  setInterval(updateClock, 1000);
+  refreshDrawingsList();
+  setupDrag('win-paint',    'tb-paint');
+  setupDrag('win-drawings', 'tb-drawings');
+  setupDrag('win-notepad',  'tb-notepad');
+  setupDrag('win-about',    'tb-about');
+  setupResize('win-paint', 'paint-resize');
+  bindCanvas();
+  document.addEventListener('keydown', onKey);
+  document.addEventListener('click', onDocClick);
+  document.addEventListener('contextmenu', onCtxMenu);
+  document.getElementById('img-upload').addEventListener('change', onUpload);
+  updateLayersList();
+}
+
+function paintBg() {
+  ctx.fillStyle = neonMode ? '#000000' : canvasBg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+// ── PALETTE ───────────────────────────────────────────────────
+function buildPalette() {
+  const g = document.getElementById('swatch-grid');
+  g.innerHTML = '';
+  PALETTE.forEach(c => {
+    const s = document.createElement('div');
+    s.className = 'swatch';
+    s.style.background = c;
+    s.title = c;
+    s.dataset.color = c;
+    s.addEventListener('click', e => {
+      if (e.shiftKey) setBg(c); else setFg(c);
+    });
+    s.addEventListener('contextmenu', e => { e.preventDefault(); setBg(c); });
+    g.appendChild(s);
+  });
+  highlightSwatch(fgColor);
+}
+
+function setFg(c) {
+  fgColor = c;
+  document.getElementById('chip-fg').style.background = c;
+  document.getElementById('hex-prev').style.background = c;
+  document.getElementById('hex-in').value = c;
+  highlightSwatch(c);
+}
+
+function setBg(c) {
+  bgColor = c;
+  document.getElementById('chip-bg').style.background = c;
+}
+
+function highlightSwatch(c) {
+  document.querySelectorAll('.swatch').forEach(s => {
+    s.classList.toggle('sw-active', s.dataset.color === c);
+  });
+}
+
+function hexChanged(v) {
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) setFg(v);
+}
+
+function pickColor(target) {
+  const inp = document.createElement('input');
+  inp.type = 'color';
+  inp.value = target === 'fg' ? fgColor : target === 'bg' ? bgColor : canvasBg;
+  inp.addEventListener('input', () => {
+    if (target === 'fg')     setFg(inp.value);
+    else if (target === 'bg') setBg(inp.value);
+    else {
+      canvasBg = inp.value;
+      document.getElementById('chip-canvas').style.background = inp.value;
+    }
+  });
+  inp.click();
+}
+
+// ── SIZE & OPACITY ────────────────────────────────────────────
+function syncSize(v) {
+  v = Math.max(1, Math.min(100, parseInt(v) || 1));
+  brushSize = v;
+  document.getElementById('size-slider').value = v;
+  document.getElementById('opt-size').value = v;
+  document.getElementById('size-lbl').textContent = v + 'px';
+  // update text overlay font if active
+  const to = document.getElementById('text-overlay');
+  if (textActive) to.style.fontSize = textFontSize() + 'px';
+}
+
+function syncOpacity(v) {
+  opacity = parseInt(v) / 100;
+  document.getElementById('opacity-lbl').textContent = v + '%';
+}
+
+function textFontSize() { return Math.max(10, brushSize * 2.5); }
+
+// ── TOOL ──────────────────────────────────────────────────────
+const TOOLS = ['brush','eraser','fill','pick','line','rect','ellipse','select','text'];
+
+function setTool(t) {
+  if (textActive) commitText();
+  tool = t;
+  TOOLS.forEach(id => {
+    const b = document.getElementById('tbtn-' + id);
+    if (b) b.classList.toggle('tool-active', id === t);
+  });
+  canvas.className = 'cur-' + t;
+  document.getElementById('sb-tool').textContent = 'Tool: ' + t;
+  clearSel();
+}
+
+// ── CANVAS COORDINATE MAPPING ─────────────────────────────────
+// Returns pixel position on the logical canvas, correctly accounting for zoom.
+function canvasXY(e) {
+  const r = canvas.getBoundingClientRect();
+  // canvas CSS size when zoom=1 equals canvas.width x canvas.height
+  // when zoom=2, CSS size = 2*canvas.width but logical pixels stay same
+  const cssW = r.width;
+  const cssH = r.height;
+  const scaleX = canvas.width  / cssW;
+  const scaleY = canvas.height / cssH;
+  return {
+    x: Math.round((e.clientX - r.left) * scaleX),
+    y: Math.round((e.clientY - r.top)  * scaleY)
+  };
+}
+
+// ── CANVAS EVENTS ─────────────────────────────────────────────
+function bindCanvas() {
+  canvas.addEventListener('mousedown', mdDown);
+  // Listen on document so drags outside canvas still work
+  document.addEventListener('mousemove', mdMove);
+  document.addEventListener('mouseup',   mdUp);
+  canvas.addEventListener('touchstart', tStart, { passive: false });
+  canvas.addEventListener('touchmove',  tMove,  { passive: false });
+  canvas.addEventListener('touchend',   tEnd,   { passive: false });
+}
+
+function mdDown(e) {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  const p = canvasXY(e);
+
+  if (tool === 'fill') {
+    floodFill(p.x, p.y, fgColor);
+    pushUndo();
+    return;
+  }
+  if (tool === 'pick') {
+    const px = ctx.getImageData(p.x, p.y, 1, 1).data;
+    setFg(rgb2hex(px[0], px[1], px[2]));
+    return;
+  }
+  if (tool === 'text') {
+    if (textActive) commitText();
+    placeText(p.x, p.y);
+    return;
+  }
+
+  drawing = true;
+  startX = p.x; startY = p.y;
+  lastX  = p.x; lastY  = p.y;
+
+  if (tool === 'select') {
+    selRect = { x: p.x, y: p.y, w: 0, h: 0 };
+    return;
+  }
+  if (['line','rect','ellipse'].includes(tool)) {
+    snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  }
+  if (tool === 'brush') drawDot(p.x, p.y);
+  if (tool === 'eraser') eraseDot(p.x, p.y);
+}
+
+function mdMove(e) {
+  if (!drawing && tool !== 'brush') return;
+  // Only track coordinates if mouse is over canvas OR we're actively drawing
+  const p = canvasXY(e);
+
+  // Always update status bar coords
+  if (p.x >= 0 && p.x < canvas.width && p.y >= 0 && p.y < canvas.height) {
+    document.getElementById('sb-pos').textContent = p.x + ', ' + p.y;
+  }
+
+  if (!drawing) return;
+
+  if (tool === 'select') {
+    selRect = {
+      x: Math.min(startX, p.x), y: Math.min(startY, p.y),
+      w: Math.abs(p.x - startX), h: Math.abs(p.y - startY)
+    };
+    renderSelOverlay();
+    return;
+  }
+  if (tool === 'brush') {
+    drawStroke(lastX, lastY, p.x, p.y);
+  } else if (tool === 'eraser') {
+    eraseStroke(lastX, lastY, p.x, p.y);
+  } else if (tool === 'line') {
+    ctx.putImageData(snapshot, 0, 0);
+    drawLine(startX, startY, p.x, p.y);
+  } else if (tool === 'rect') {
+    ctx.putImageData(snapshot, 0, 0);
+    drawRect(startX, startY, p.x - startX, p.y - startY);
+  } else if (tool === 'ellipse') {
+    ctx.putImageData(snapshot, 0, 0);
+    drawEllipse(startX, startY, p.x, p.y);
+  }
+  lastX = p.x; lastY = p.y;
+}
+
+function mdUp(e) {
+  if (!drawing) return;
+  drawing = false;
+  snapshot = null;
+  if (['brush','eraser','line','rect','ellipse'].includes(tool)) pushUndo();
+}
+
+function tStart(e) {
+  e.preventDefault();
+  mdDown({ button: 0, clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, preventDefault: ()=>{} });
+}
+function tMove(e) {
+  e.preventDefault();
+  mdMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+}
+function tEnd(e) {
+  e.preventDefault();
+  mdUp({});
+}
+
+// ── DRAWING PRIMITIVES ────────────────────────────────────────
+function rgba(hex, a) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function rgb2hex(r,g,b) {
+  return '#' + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+}
+
+function applyNeon() {
+  if (neonMode) { ctx.shadowColor = fgColor; ctx.shadowBlur = brushSize * 2.5; }
+}
+function clearNeon() { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
+
+function drawDot(x, y) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, Math.max(0.5, brushSize / 2), 0, Math.PI * 2);
+  ctx.fillStyle = rgba(fgColor, opacity);
+  applyNeon();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawStroke(x1, y1, x2, y2) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = rgba(fgColor, opacity);
+  ctx.lineWidth = brushSize;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  applyNeon();
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Eraser: simply draw with bgColor — reliable, no composite ops needed
+function eraseDot(x, y) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, Math.max(0.5, brushSize / 2), 0, Math.PI * 2);
+  ctx.fillStyle = bgColor;
+  ctx.globalAlpha = opacity;
+  ctx.fill();
+  ctx.restore();
+}
+
+function eraseStroke(x1, y1, x2, y2) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = bgColor;
+  ctx.lineWidth = brushSize;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.globalAlpha = opacity;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawLine(x1, y1, x2, y2) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+  ctx.strokeStyle = rgba(fgColor, opacity);
+  ctx.lineWidth = brushSize;
+  ctx.lineCap = 'round';
+  applyNeon();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawRect(x, y, w, h) {
+  const filled = document.getElementById('opt-filled').checked;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  if (filled) { ctx.fillStyle = rgba(fgColor, opacity); applyNeon(); ctx.fill(); }
+  ctx.strokeStyle = rgba(fgColor, opacity);
+  ctx.lineWidth = brushSize;
+  applyNeon();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawEllipse(x1, y1, x2, y2) {
+  const filled = document.getElementById('opt-filled').checked;
+  const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+  const rx = Math.abs(x2 - x1) / 2, ry = Math.abs(y2 - y1) / 2;
+  if (rx < 0.5 || ry < 0.5) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  if (filled) { ctx.fillStyle = rgba(fgColor, opacity); applyNeon(); ctx.fill(); }
+  ctx.strokeStyle = rgba(fgColor, opacity);
+  ctx.lineWidth = brushSize;
+  applyNeon();
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ── FLOOD FILL (with tolerance) ───────────────────────────────
+function floodFill(sx, sy, fillHex) {
+  if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) return;
+  const id   = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d    = id.data;
+  const W    = canvas.width, H = canvas.height;
+  const ti   = (sy * W + sx) * 4;
+  const tr = d[ti], tg = d[ti+1], tb = d[ti+2];
+
+  const fr = parseInt(fillHex.slice(1,3),16);
+  const fg = parseInt(fillHex.slice(3,5),16);
+  const fb = parseInt(fillHex.slice(5,7),16);
+  const fa = Math.round(opacity * 255);
+
+  if (tr===fr && tg===fg && tb===fb) return;
+
+  const TOLERANCE = 32;
+  function matches(i) {
+    return Math.abs(d[i]-tr) <= TOLERANCE &&
+           Math.abs(d[i+1]-tg) <= TOLERANCE &&
+           Math.abs(d[i+2]-tb) <= TOLERANCE;
+  }
+
+  const visited = new Uint8Array(W * H);
+  const stack   = [sx, sy];
+
+  while (stack.length) {
+    const y = stack.pop(), x = stack.pop();
+    if (x < 0 || x >= W || y < 0 || y >= H) continue;
+    const flat = y * W + x;
+    if (visited[flat]) continue;
+    const i = flat * 4;
+    if (!matches(i)) continue;
+    visited[flat] = 1;
+    d[i] = fr; d[i+1] = fg; d[i+2] = fb; d[i+3] = fa;
+    stack.push(x+1, y, x-1, y, x, y+1, x, y-1);
+  }
+  ctx.putImageData(id, 0, 0);
+}
+
+// ── SELECTION ─────────────────────────────────────────────────
+function clearSel() {
+  selRect = null;
+  document.getElementById('sel-overlay').style.display = 'none';
+}
+
+function renderSelOverlay() {
+  if (!selRect) return;
+  const r   = canvas.getBoundingClientRect();
+  const wr  = document.getElementById('zoom-wrapper').getBoundingClientRect();
+  const sx  = r.width  / canvas.width;  // CSS px per canvas px
+  const sy  = r.height / canvas.height;
+  const ov  = document.getElementById('sel-overlay');
+  ov.style.display = 'block';
+  ov.style.left    = (selRect.x * sx + (r.left - wr.left)) + 'px';
+  ov.style.top     = (selRect.y * sy + (r.top  - wr.top))  + 'px';
+  ov.style.width   = (selRect.w * sx) + 'px';
+  ov.style.height  = (selRect.h * sy) + 'px';
+}
+
+// ── TEXT TOOL ─────────────────────────────────────────────────
+function placeText(cx, cy) {
+  const ov  = document.getElementById('text-overlay');
+  const r   = canvas.getBoundingClientRect();
+  const wr  = document.getElementById('zoom-wrapper').getBoundingClientRect();
+  const sx  = r.width  / canvas.width;
+  const sy  = r.height / canvas.height;
+
+  ov.style.display    = 'block';
+  ov.style.left       = (cx * sx + (r.left - wr.left)) + 'px';
+  ov.style.top        = (cy * sy + (r.top  - wr.top))  + 'px';
+  ov.style.color      = fgColor;
+  ov.style.fontSize   = textFontSize() + 'px';
+  ov.style.lineHeight = '1.3';
+  ov.value            = '';
+  ov.focus();
+  textActive = true;
+
+  ov.onkeydown = e => {
+    if (e.key === 'Escape') { ov.style.display = 'none'; textActive = false; }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitText(); }
+  };
+}
+
+function commitText() {
+  const ov   = document.getElementById('text-overlay');
+  const text = ov.value;
+  if (text.trim()) {
+    const r   = canvas.getBoundingClientRect();
+    const wr  = document.getElementById('zoom-wrapper').getBoundingClientRect();
+    const sx  = canvas.width  / r.width;
+    const sy  = canvas.height / r.height;
+    const lx  = parseFloat(ov.style.left);
+    const ly  = parseFloat(ov.style.top);
+    const cx  = (lx - (r.left - wr.left)) * sx;
+    const cy  = (ly - (r.top  - wr.top))  * sy;
+    const fs  = textFontSize();
+
+    ctx.save();
+    ctx.font      = `${fs}px Arial, sans-serif`;
+    ctx.fillStyle = rgba(fgColor, opacity);
+    if (neonMode) { ctx.shadowColor = fgColor; ctx.shadowBlur = 8; }
+    text.split('\n').forEach((line, i) => {
+      ctx.fillText(line, cx, cy + (i + 1) * fs * 1.3);
+    });
+    ctx.restore();
+    pushUndo();
+  }
+  ov.style.display = 'none';
+  textActive = false;
+}
+
+// ── UNDO / REDO ───────────────────────────────────────────────
+function pushUndo() {
+  undoStack.push(canvas.toDataURL());
+  if (undoStack.length > 60) undoStack.shift();
+  redoStack.length = 0;
+  updateUndoBtns();
+}
+
+function undo() {
+  if (undoStack.length <= 1) return;
+  redoStack.push(undoStack.pop());
+  restoreState(undoStack[undoStack.length - 1]);
+  updateUndoBtns();
+}
+
+function redo() {
+  if (!redoStack.length) return;
+  const s = redoStack.pop();
+  undoStack.push(s);
+  restoreState(s);
+  updateUndoBtns();
+}
+
+function restoreState(dataUrl) {
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+  };
+  img.src = dataUrl;
+}
+
+function updateUndoBtns() {
+  document.getElementById('ubtn-undo').disabled = undoStack.length <= 1;
+  document.getElementById('ubtn-redo').disabled = redoStack.length === 0;
+}
+
+// ── LAYERS (visual labels; single flat canvas) ────────────────
+function addLayer() {
+  layers.push({ name: 'Layer ' + (layers.length + 1), visible: true });
+  activeLayer = layers.length - 1;
+  updateLayersList();
+}
+function delLayer() {
+  if (activeLayer < 0 || !layers.length) return;
+  layers.splice(activeLayer, 1);
+  activeLayer = Math.min(activeLayer, layers.length - 1);
+  updateLayersList();
+}
+function mergeLayers() {
+  if (layers.length < 2 || activeLayer <= 0) return;
+  layers.splice(activeLayer - 1, 2, { name: layers[activeLayer-1].name + '+', visible: true });
+  activeLayer = Math.max(0, activeLayer - 1);
+  updateLayersList();
+}
+function updateLayersList() {
+  const box = document.getElementById('layers-box');
+  document.getElementById('sb-layers').textContent = layers.length + ' layers';
+  if (!layers.length) {
+    box.innerHTML = '<div class="no-layers">No layers yet</div>';
+    return;
+  }
+  box.innerHTML = layers.map((l, i) => `
+    <div class="layer-item ${i===activeLayer?'lsel':''}" onclick="selLayer(${i})">
+      <span class="layer-vis" onclick="toggleVis(event,${i})">${l.visible?'●':'○'}</span>
+      ${l.name}
+    </div>`).join('');
+}
+function selLayer(i) { activeLayer = i; updateLayersList(); }
+function toggleVis(e, i) { e.stopPropagation(); layers[i].visible = !layers[i].visible; updateLayersList(); }
+
+// ── NEW / CLEAR ───────────────────────────────────────────────
+function newCanvas() {
+  if (!confirm('Clear the canvas and start fresh?')) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  paintBg();
+  pushUndo();
+  document.getElementById('sheet-name').value = 'Untitled.stk';
+  clearSel();
+}
+
+// ── UPLOAD IMAGE ──────────────────────────────────────────────
+function triggerUpload() { document.getElementById('img-upload').click(); }
+function onUpload(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      paintBg();
+      // Scale to fit canvas maintaining aspect ratio
+      const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+      const dw = img.width * scale, dh = img.height * scale;
+      const dx = (canvas.width - dw) / 2, dy = (canvas.height - dh) / 2;
+      ctx.drawImage(img, dx, dy, dw, dh);
+      pushUndo();
+      document.getElementById('sheet-name').value = f.name.replace(/\.[^.]+$/, '.stk');
+    };
+    img.src = ev.target.result;
+  };
+  r.readAsDataURL(f);
+  e.target.value = '';
+}
+
+// ── SAVE / DOWNLOAD ───────────────────────────────────────────
+function saveDrawing() {
+  const name = document.getElementById('sheet-name').value.trim() || 'Untitled.stk';
+  const data = canvas.toDataURL('image/png');
+  const list = getSavedList();
+  const idx  = list.findIndex(d => d.name === name);
+  const entry = { name, data, date: new Date().toLocaleString() };
+  if (idx >= 0) list[idx] = entry; else list.push(entry);
+  try {
+    localStorage.setItem('p95_drawings', JSON.stringify(list));
+    flashStatus('Saved: ' + name);
+    refreshDrawingsList();
+  } catch {
+    flashStatus('Save failed (storage full?)');
+  }
+}
+
+function downloadCanvas() {
+  const a    = document.createElement('a');
+  const name = document.getElementById('sheet-name').value.replace(/\.stk$/, '') || 'drawing';
+  a.download = name + '.png';
+  a.href     = canvas.toDataURL('image/png');
+  a.click();
+}
+
+function flashStatus(msg) {
+  const el   = document.getElementById('sb-tool');
+  const prev = el.textContent;
+  el.textContent = msg;
+  setTimeout(() => el.textContent = prev, 2000);
+}
+
+// ── MY DRAWINGS ───────────────────────────────────────────────
+function getSavedList() {
+  try { return JSON.parse(localStorage.getItem('p95_drawings') || '[]'); } catch { return []; }
+}
+
+function refreshDrawingsList() {
+  const list = getSavedList();
+  const grid = document.getElementById('drawings-grid');
+  document.getElementById('d-count').textContent = list.length + ' items';
+  selDrawing = null;
+  updateDrawBtns();
+
+  if (!list.length) {
+    grid.innerHTML = '<div class="d-empty">No saved drawings yet.<br>Use Save in Paint95 to add some.</div>';
+    return;
+  }
+  grid.innerHTML = list.map((d, i) => `
+    <div class="d-thumb" id="dt-${i}" onclick="selectDrawing(${i})" ondblclick="loadDrawing(${i})">
+      <img src="${d.data}" alt="${d.name}" loading="lazy">
+      <span title="${d.name} (${d.date})">${d.name}</span>
+    </div>`).join('');
+}
+
+function selectDrawing(i) {
+  selDrawing = i;
+  document.querySelectorAll('.d-thumb').forEach((el, idx) => el.classList.toggle('dsel', idx === i));
+  updateDrawBtns();
+}
+
+function updateDrawBtns() {
+  const has = selDrawing !== null;
+  document.getElementById('d-open-btn').disabled = !has;
+  document.getElementById('d-del-btn').disabled  = !has;
+}
+
+function openSelDrawing() { if (selDrawing !== null) loadDrawing(selDrawing); }
+
+function loadDrawing(i) {
+  const list = getSavedList();
+  if (!list[i]) return;
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    pushUndo();
+    document.getElementById('sheet-name').value = list[i].name;
+  };
+  img.src = list[i].data;
+  openPaint();
+  closeWin('win-drawings', 'drawings');
+}
+
+function delSelDrawing() {
+  if (selDrawing === null) return;
+  const list = getSavedList();
+  if (!confirm('Delete "' + (list[selDrawing] && list[selDrawing].name) + '"?')) return;
+  list.splice(selDrawing, 1);
+  localStorage.setItem('p95_drawings', JSON.stringify(list));
+  selDrawing = null;
+  refreshDrawingsList();
+}
+
+// ── NEON MODE ─────────────────────────────────────────────────
+function toggleNeon() {
+  neonMode = document.getElementById('opt-neon').checked;
+  document.body.classList.toggle('neon', neonMode);
+  paintBg();
+  pushUndo();
+}
+
+// ── ZOOM ──────────────────────────────────────────────────────
+function toggleZoom() {
+  zoom = document.getElementById('opt-zoom').checked ? 2 : 1;
+  const w  = document.getElementById('zoom-wrapper');
+  const ca = document.getElementById('canvas-area');
+  if (zoom === 2) {
+    w.style.transform = 'scale(2)';
+    w.style.marginRight  = canvas.width  + 'px';
+    w.style.marginBottom = canvas.height + 'px';
+  } else {
+    w.style.transform    = 'scale(1)';
+    w.style.marginRight  = '';
+    w.style.marginBottom = '';
+  }
+  document.getElementById('sb-zoom').textContent = 'Zoom: ' + (zoom * 100) + '%';
+}
+
+// ── KEYBOARD ──────────────────────────────────────────────────
+function onKey(e) {
+  const tag = e.target.tagName.toLowerCase();
+
+  // Ctrl shortcuts always work regardless of focus
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'z') { e.preventDefault(); undo(); return; }
+    if (e.key === 'y') { e.preventDefault(); redo(); return; }
+    if (e.key === 's') { e.preventDefault(); saveDrawing(); return; }
+    if (e.key === 'd') { e.preventDefault(); downloadCanvas(); return; }
+  }
+
+  // Don't intercept tool keys when typing in a text field (except textarea with textActive)
+  if (tag === 'input') return;
+  if (tag === 'textarea' && !textActive) return;
+
+  if (e.key === '[') { syncSize(Math.max(1, brushSize - 1)); return; }
+  if (e.key === ']') { syncSize(Math.min(100, brushSize + 1)); return; }
+
+  const km = { b:'brush', e:'eraser', f:'fill', i:'pick', l:'line', r:'rect', o:'ellipse', s:'select', t:'text' };
+  if (km[e.key]) { setTool(km[e.key]); return; }
+
+  if (e.key === 'Delete' && selRect) {
+    ctx.save();
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(selRect.x, selRect.y, selRect.w, selRect.h);
+    ctx.restore();
+    clearSel();
+    pushUndo();
+  }
+}
+
+// ── WINDOW MANAGEMENT ─────────────────────────────────────────
+function openPaint()    { showWin('win-paint',    'paint',    'Paint95.exe'); }
+function openDrawings() { refreshDrawingsList(); showWin('win-drawings', 'drawings', 'My Drawings'); }
+function openNotepad()  { showWin('win-notepad',  'notepad',  'Read Me.txt'); }
+function openAbout()    { showWin('win-about',    'about',    'About Paint95'); }
+
+function showWin(id, tbId, label) {
+  const win = document.getElementById(id);
+  win.classList.add('visible');
+  win.classList.remove('minimized');
+  bringFront(id);
+  addTbItem(tbId, label, id);
+}
+
+function closeWin(id, tbId) {
+  document.getElementById(id).classList.remove('visible');
+  removeTbItem(tbId);
+}
+
+function minWin(id, tbId) {
+  document.getElementById(id).classList.add('minimized');
+  if (tbMap[tbId]) tbMap[tbId].classList.remove('tb-active');
+}
+
+function maxWin(id) {
+  const win = document.getElementById(id);
+  if (win.dataset.max === '1') {
+    win.style.cssText = win.dataset.prevStyle || '';
+    win.dataset.max = '0';
+  } else {
+    win.dataset.prevStyle = win.style.cssText;
+    Object.assign(win.style, { left: '0', top: '0', width: '100vw', height: 'calc(100vh - 28px)' });
+    win.dataset.max = '1';
+  }
+}
+
+function bringFront(id) {
+  winZ++;
+  document.getElementById(id).style.zIndex = winZ;
+  // Mark all title bars inactive, then activate the front one
+  document.querySelectorAll('.title-bar').forEach(tb => tb.classList.add('inactive'));
+  const frontTb = document.querySelector('#' + id + ' .title-bar');
+  if (frontTb) frontTb.classList.remove('inactive');
+}
+
+// ── TASKBAR ───────────────────────────────────────────────────
+function addTbItem(tbId, label, winId) {
+  if (tbMap[tbId]) {
+    tbMap[tbId].classList.add('tb-active');
+    return;
+  }
+  const btn = document.createElement('button');
+  btn.className = 'taskbar-btn tb-active';
+  btn.id = 'tbi-' + tbId;
+  btn.textContent = label;
+  btn.onclick = () => {
+    const win = document.getElementById(winId);
+    if (win.classList.contains('minimized')) {
+      win.classList.remove('minimized');
+      btn.classList.add('tb-active');
+      bringFront(winId);
+    } else {
+      win.classList.add('minimized');
+      btn.classList.remove('tb-active');
+    }
+  };
+  document.getElementById('taskbar-items').appendChild(btn);
+  tbMap[tbId] = btn;
+}
+
+function removeTbItem(tbId) {
+  if (tbMap[tbId]) { tbMap[tbId].remove(); delete tbMap[tbId]; }
+}
+
+// ── DRAGGABLE WINDOWS ─────────────────────────────────────────
+function setupDrag(winId, barId) {
+  const win = document.getElementById(winId);
+  const bar = document.getElementById(barId);
+  bar.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('tc-btn') || e.target.tagName === 'INPUT') return;
+    e.preventDefault();
+    const ox = e.clientX - win.offsetLeft;
+    const oy = e.clientY - win.offsetTop;
+    bringFront(winId);
+    function mv(e2) {
+      win.style.left = Math.max(0, e2.clientX - ox) + 'px';
+      win.style.top  = Math.max(0, e2.clientY - oy) + 'px';
+    }
+    function up() {
+      document.removeEventListener('mousemove', mv);
+      document.removeEventListener('mouseup', up);
+    }
+    document.addEventListener('mousemove', mv);
+    document.addEventListener('mouseup', up);
+  });
+  win.addEventListener('mousedown', () => bringFront(winId));
+}
+
+// ── RESIZABLE PAINT WINDOW ────────────────────────────────────
+function setupResize(winId, handleId) {
+  const win = document.getElementById(winId);
+  const hdl = document.getElementById(handleId);
+  hdl.addEventListener('mousedown', e => {
+    e.stopPropagation();
+    e.preventDefault();
+    const sw = win.offsetWidth, sh = win.offsetHeight;
+    const sx = e.clientX, sy = e.clientY;
+    function mv(e2) {
+      win.style.width  = Math.max(600, sw + e2.clientX - sx) + 'px';
+      win.style.height = Math.max(350, sh + e2.clientY - sy) + 'px';
+    }
+    function up() {
+      document.removeEventListener('mousemove', mv);
+      document.removeEventListener('mouseup', up);
+    }
+    document.addEventListener('mousemove', mv);
+    document.addEventListener('mouseup', up);
+  });
+}
+
+// ── CLOCK ─────────────────────────────────────────────────────
+function updateClock() {
+  const n = new Date();
+  let h = n.getHours(), m = n.getMinutes();
+  const a = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  document.getElementById('taskbar-clock').textContent = h + ':' + String(m).padStart(2,'0') + ' ' + a;
+}
+
+// ── START MENU ────────────────────────────────────────────────
+function toggleStart() { document.getElementById('start-menu').classList.toggle('visible'); }
+function closeStart()  { document.getElementById('start-menu').classList.remove('visible'); }
+
+// ── CONTEXT MENU ──────────────────────────────────────────────
+function onCtxMenu(e) {
+  if (e.target.closest('.window') || e.target.closest('#taskbar') || e.target.closest('#start-menu')) return;
+  e.preventDefault();
+  const m = document.getElementById('ctx-menu');
+  m.style.left = Math.min(e.clientX, innerWidth - 160) + 'px';
+  m.style.top  = Math.min(e.clientY, innerHeight - 100) + 'px';
+  m.classList.add('visible');
+}
+function closeCtx() { document.getElementById('ctx-menu').classList.remove('visible'); }
+
+function onDocClick(e) {
+  if (!e.target.closest('#ctx-menu'))    closeCtx();
+  if (!e.target.closest('#start-menu') && !e.target.closest('#start-btn')) closeStart();
+  if (!e.target.closest('.desktop-icon')) {
+    document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('selected'));
+  }
+}
+
+// ── DESKTOP ICON SINGLE-CLICK SELECT ─────────────────────────
+document.querySelectorAll('.desktop-icon').forEach(icon => {
+  icon.addEventListener('click', () => {
+    document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('selected'));
+    icon.classList.add('selected');
+  });
+});
+
+// ── BOOT ──────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  init();
+  setTimeout(openPaint, 120);
+});
+</script>
+</body>
+</html>
