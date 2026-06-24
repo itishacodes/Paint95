@@ -3,7 +3,7 @@
 A Windows 95-inspired drawing studio built entirely with vanilla HTML, CSS, and JavaScript — no frameworks, no build step, no dependencies.
 
 
-🎨   [Live Demo](https://paint95.netlify.app)
+🎨   [Live Demo](https://itishacodes.github.io/Paint95/)
 
 
 
